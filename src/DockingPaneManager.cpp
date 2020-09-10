@@ -73,9 +73,9 @@ DockingPaneManager::DockingPaneManager() :
 {
     Q_D(DockingPaneManager);
 
-    d->m_dockingWidget = NULL;
-    d->m_mainWindow = NULL;
-    d->m_flyoutWidget = NULL;
+    d->m_dockingWidget = nullptr;
+    d->m_mainWindow = nullptr;
+    d->m_flyoutWidget = nullptr;
 
     d->m_clientPane = new DockingPaneClient();
 
@@ -114,7 +114,7 @@ void DockingPaneManager::setWidget(QWidget *widget)
 
     QLayoutItem *child;
 
-    while((child = d->m_thisWidget->layout()->takeAt(0))!=0);
+    while((child = d->m_thisWidget->layout()->takeAt(0)) != nullptr);
 
     if (widget) {
         d->m_thisWidget->layout()->addWidget(widget);
@@ -131,14 +131,14 @@ DockingPaneBase *DockingPaneManager::getDockingParent(QWidget *widget)
         widget = widget->parentWidget();
     }
 
-    return(NULL);
+    return(nullptr);
 }
 
 DockingPaneBase *DockingPaneManager::createPane(QString id, QString title, QWidget *widget, QSize initialSize, DockingPaneManager::DockPosition dockPosition, DockingPaneBase *neighbourPane)
 {
     Q_D(DockingPaneManager);
 
-    DockingPaneContainer *newPane = new DockingPaneContainer(title, id, NULL, widget);
+    DockingPaneContainer *newPane = new DockingPaneContainer(title, id, nullptr, widget);
 
     newPane->resize(initialSize);
 
@@ -186,7 +186,7 @@ DockingPaneBase *DockingPaneManager::dockPane(DockingPaneBase *paneToDock, DockP
 
             closePane(paneToDock);
         } else {
-            DockingPaneTabbedContainer *newContainer = new DockingPaneTabbedContainer(NULL);
+            DockingPaneTabbedContainer *newContainer = new DockingPaneTabbedContainer(nullptr);
 
             newContainer->m_dockingManager = this;
 
@@ -213,7 +213,7 @@ DockingPaneBase *DockingPaneManager::dockPane(DockingPaneBase *paneToDock, DockP
     // docking with the frame, so set neighbour to root?
     // *****
 
-    if (neighbourPane==NULL) {
+    if (neighbourPane==nullptr) {
         neighbourPane = d->m_rootPane;
 
         parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(getDockingParent(neighbourPane));
@@ -231,7 +231,7 @@ DockingPaneBase *DockingPaneManager::dockPane(DockingPaneBase *paneToDock, DockP
     // we need to create a new splitter
     // *****
 
-    newSplitter = new DockingPaneSplitterContainer(NULL, direction);
+    newSplitter = new DockingPaneSplitterContainer(nullptr, direction);
 
     int positionIndex = 0;
 
@@ -251,7 +251,7 @@ DockingPaneBase *DockingPaneManager::dockPane(DockingPaneBase *paneToDock, DockP
         sizes = parentSplitter->m_splitterWidget->sizes();
     }
 
-    neighbourPane->setParent(NULL);
+    neighbourPane->setParent(nullptr);
 
     if ( (dockPosition==dockLeft) || (dockPosition==dockTop)) {
         if (direction==DockingPaneSplitterContainer::splitHorizontal) {
@@ -337,7 +337,7 @@ void DockingPaneManager::updateAutohideButton(DockingPaneBase *oldContainer, Doc
 {
     Q_D(DockingPaneManager);
 
-    QWidget *widgets[] = {d->m_topAutoHidePane, d->m_bottomAutoHidePane, d->m_leftAutoHidePane, d->m_rightAutoHidePane, NULL};
+    QWidget *widgets[] = {d->m_topAutoHidePane, d->m_bottomAutoHidePane, d->m_leftAutoHidePane, d->m_rightAutoHidePane, nullptr};
 
     for (int i=0;widgets[i];i++) {
         QBoxLayout *layout = (QBoxLayout *) widgets[i]->layout();
@@ -558,7 +558,7 @@ void DockingPaneManager::removePinnedButton(DockingPaneBase *dockingPaneContaine
 {
     Q_D(DockingPaneManager);
 
-    QWidget *widgets[] = {d->m_topAutoHidePane, d->m_bottomAutoHidePane, d->m_leftAutoHidePane, d->m_rightAutoHidePane, NULL};
+    QWidget *widgets[] = {d->m_topAutoHidePane, d->m_bottomAutoHidePane, d->m_leftAutoHidePane, d->m_rightAutoHidePane, nullptr};
     QBoxLayout *layout;
     QList<QWidget *> deleteList;
 
@@ -569,7 +569,7 @@ void DockingPaneManager::removePinnedButton(DockingPaneBase *dockingPaneContaine
             DockAutoHideButton *button = qobject_cast<DockAutoHideButton *>(widgets[i]->layout()->itemAt(j)->widget());
 
             if (button) {
-                if ((button->container()==dockingPaneContainer) && ( (dockingPane==NULL) || ((dockingPane) && (button->pane()==dockingPane))) ) {
+                if ((button->container()==dockingPaneContainer) && ( (dockingPane==nullptr) || ((dockingPane) && (button->pane()==dockingPane))) ) {
                     if (!deleteList.contains(dockingPane)) {
                         deleteList.append(button);
                     }
@@ -608,7 +608,7 @@ void DockingPaneManager::closePane(DockingPaneBase *dockingPane)
     }
 
     if (parentSplitter) {
-        dockingPane->setParent(NULL);
+        dockingPane->setParent(nullptr);
 
         if (parentSplitter->m_splitterWidget->count()==1) {
             // *****
@@ -846,7 +846,7 @@ void DockingPaneManager::unpinPane(DockingPaneBase *pane)
         d->m_flyoutWidget->blockSignals(true);
         d->m_flyoutWidget->close();
         delete d->m_flyoutWidget;
-        d->m_flyoutWidget = NULL;
+        d->m_flyoutWidget = nullptr;
     }
 }
 
@@ -864,7 +864,7 @@ void DockingPaneManager::closePinnedPane(DockingPaneBase *pane)
         d->m_flyoutWidget->blockSignals(true);
         d->m_flyoutWidget->close();
         delete d->m_flyoutWidget;
-        d->m_flyoutWidget = NULL;
+        d->m_flyoutWidget = nullptr;
     }
 }
 
@@ -884,7 +884,7 @@ void DockingPaneManager::openFlyout(DockAutoHideButton *button)
 
         delete d->m_flyoutWidget;
 
-        d->m_flyoutWidget = NULL;
+        d->m_flyoutWidget = nullptr;
     }
 
     d->m_flyoutWidget = button->container()->openFlyout(true, d->m_thisWidget, (DockingPaneContainer::FlyoutPosition) button->position(), qobject_cast<DockingPaneContainer *>(button->pane()));
@@ -904,7 +904,7 @@ void DockingPaneManager::onFlyoutFocusLost(void)
     if (d->m_flyoutWidget) {
         d->m_flyoutWidget->restorePaneWidget();
         d->m_flyoutWidget->deleteLater();
-        d->m_flyoutWidget = NULL;
+        d->m_flyoutWidget = nullptr;
     }
 }
 
@@ -915,7 +915,7 @@ void DockingPaneManager::showPane(DockingPaneBase *dockingPane)
     switch(dockingPane->state()) {
         case DockingPaneBase::Pinned:
         {
-            QWidget *widgets[] = {d->m_topAutoHidePane, d->m_bottomAutoHidePane, d->m_leftAutoHidePane, d->m_rightAutoHidePane, NULL};
+            QWidget *widgets[] = {d->m_topAutoHidePane, d->m_bottomAutoHidePane, d->m_leftAutoHidePane, d->m_rightAutoHidePane, nullptr};
 
             for (int i=0;widgets[i];i++) {
                 QBoxLayout *layout = (QBoxLayout *) widgets[i]->layout();
@@ -956,7 +956,7 @@ void DockingPaneManager::showPane(DockingPaneBase *dockingPane)
         }
 
         case DockingPaneBase::Tabbed: {
-            QWidget *widgets[] = {d->m_topAutoHidePane, d->m_bottomAutoHidePane, d->m_leftAutoHidePane, d->m_rightAutoHidePane, NULL};
+            QWidget *widgets[] = {d->m_topAutoHidePane, d->m_bottomAutoHidePane, d->m_leftAutoHidePane, d->m_rightAutoHidePane, nullptr};
 
             for (int i=0;widgets[i];i++) {
                 QBoxLayout *layout = (QBoxLayout *) widgets[i]->layout();
@@ -1016,7 +1016,7 @@ void DockingPaneManager::floatingPaneStartMove(DockingPaneBase *pane, QPoint cur
     d->m_dockingStickers->setFrameRect(rcFrame);
 
     d->m_targetPosition = -1;
-    d->m_targetPane = NULL;
+    d->m_targetPane = nullptr;
 
     d->m_dockingStickers->setTabVisible(true);
 }
@@ -1062,28 +1062,28 @@ void DockingPaneManager::floatingPaneEndMove(DockingPaneBase *pane, QPoint curso
 
             case DockingFrameStickers::frameLeft: {
                 d->m_targetPosition = dockLeft;
-                d->m_targetPane = NULL;
+                d->m_targetPane = nullptr;
 
                 break;
             }
 
             case DockingFrameStickers::frameRight: {
                 d->m_targetPosition = dockRight;
-                d->m_targetPane = NULL;
+                d->m_targetPane = nullptr;
 
                 break;
             }
 
             case DockingFrameStickers::frameTop: {
                 d->m_targetPosition = dockTop;
-                d->m_targetPane = NULL;
+                d->m_targetPane = nullptr;
 
                 break;
             }
 
             case DockingFrameStickers::frameBottom: {
                 d->m_targetPosition = dockBottom;
-                d->m_targetPane = NULL;
+                d->m_targetPane = nullptr;
 
                 break;
             }
@@ -1112,7 +1112,7 @@ void DockingPaneManager::floatingPaneMoved(DockingPaneBase *pane, QPoint cursorP
     }
 
     d->m_targetPosition = -1;
-    d->m_targetPane = NULL;
+    d->m_targetPane = nullptr;
 
     updateFloatingPane(d->m_clientPane, cursorPos);
 
@@ -1330,13 +1330,13 @@ DockingPaneBase *DockingPaneManager::restoreLayout(QDomNode node)
             return(d->m_dockingPaneMap[containerId]);
         }
 
-        return(NULL);
+        return(nullptr);
     }
 
     if (node.nodeName()=="DockingPaneTabbedContainer") {
         QDomElement nodeElement = node.toElement();
         QString containerId, selectedTab;
-        DockingPaneContainer *selectedContainer = NULL;
+        DockingPaneContainer *selectedContainer = nullptr;
         int paneCount = 0;
 
         DockingPaneTabbedContainer *tabbedContainer = new DockingPaneTabbedContainer();
@@ -1382,7 +1382,7 @@ DockingPaneBase *DockingPaneManager::restoreLayout(QDomNode node)
 
         delete tabbedContainer;
 
-        return(NULL);
+        return(nullptr);
     }
 
     if (node.nodeName()=="DockingPaneSplitterContainer")
@@ -1425,7 +1425,7 @@ DockingPaneBase *DockingPaneManager::restoreLayout(QDomNode node)
         }
     }
 
-    return(NULL);
+    return(nullptr);
 }
 
 void DockingPaneManager::saveFloatingState(QDomNode *parentNode)
