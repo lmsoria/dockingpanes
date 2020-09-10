@@ -40,7 +40,7 @@ class DockingTargetWidget;
 class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
 {
     Q_OBJECT
-
+    Q_DECLARE_PRIVATE(DockingPaneManager)
     public:
         enum DockPosition
         {
@@ -52,7 +52,6 @@ class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
             dockTab
         };
 
-    public:
         DockingPaneManager();
 
         QWidget *widget(void);
@@ -81,12 +80,14 @@ class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
         QWidget *mainWindow(void);
 
         void dumpPaneList(void);
-
-    public:
         void floatingPaneMoved(DockingPaneBase *pane, QPoint cursorPos);
         void floatingPaneEndMove(DockingPaneBase *pane, QPoint cursorPos);
         void floatingPaneStartMove(DockingPaneBase *pane, QPoint cursorPos);
         void removePinnedButton(DockingPaneBase *dockingPaneContainer, DockingPaneBase *dockingPane=NULL);
+
+    protected:
+        bool eventFilter(QObject *obj, QEvent *event);
+        DockingPaneManagerPrivate *const d_ptr;
 
     private:
         friend class DockingPaneContainer;
@@ -101,11 +102,6 @@ class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
         void restorePinnedPanes(QDomNode *node);
         void reparentPane(DockingPaneSplitterContainer *previousParentSplitter, DockingPaneBase *dockingPane);
         void restoreFloatingPanes(QDomNode *node);
-
-    protected:
-        bool eventFilter(QObject *obj, QEvent *event);
-
-    private:
         void setWidget(QWidget *widget);
         DockingPaneBase *getDockingParent(QWidget *widget);
 
@@ -116,13 +112,6 @@ class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
         void onAutoDockButtonClicked(void);
         void onFocusChanged(QWidget *old, QWidget *now);
         void onFlyoutFocusLost(void);
-
-    protected:
-        DockingPaneManagerPrivate *const d_ptr;
-
-    private:
-
-        Q_DECLARE_PRIVATE(DockingPaneManager)
 };
 
 #endif // DOCKINGPANEMANAGER_H
