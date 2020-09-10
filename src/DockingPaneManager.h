@@ -20,7 +20,7 @@
 #ifndef DOCKINGPANEMANAGER_H
 #define DOCKINGPANEMANAGER_H
 
-#include <QWidget>
+#include <QObject>
 
 #include "DockingPanes_global.h"
 
