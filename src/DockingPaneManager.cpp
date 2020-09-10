@@ -999,16 +999,13 @@ void DockingPaneManager::showPane(DockingPaneBase *dockingPane)
     }
 }
 
-void DockingPaneManager::onFocusChanged(QWidget *old, QWidget *now)
+void DockingPaneManager::onFocusChanged(QWidget*, QWidget*)
 {
-    Q_UNUSED(old);
-    Q_UNUSED(now);
+    // Do nothing.
 }
 
-void DockingPaneManager::floatingPaneStartMove(DockingPaneBase *pane, QPoint cursorPos)
+void DockingPaneManager::floatingPaneStartMove(DockingPaneBase*, QPoint)
 {
-    Q_UNUSED(pane);
-    Q_UNUSED(cursorPos);
     Q_D(DockingPaneManager);
 
     QRect rcFrame(d->m_thisWidget->mapToGlobal(d->m_thisWidget->rect().topLeft()), d->m_thisWidget->mapToGlobal(d->m_thisWidget->rect().bottomRight()));
@@ -1021,9 +1018,8 @@ void DockingPaneManager::floatingPaneStartMove(DockingPaneBase *pane, QPoint cur
     d->m_dockingStickers->setTabVisible(true);
 }
 
-void DockingPaneManager::floatingPaneEndMove(DockingPaneBase *pane, QPoint cursorPos)
+void DockingPaneManager::floatingPaneEndMove(DockingPaneBase* pane, QPoint)
 {
-    Q_UNUSED(cursorPos);
     Q_D(DockingPaneManager);
 
     if (d->m_targetWidget) {
