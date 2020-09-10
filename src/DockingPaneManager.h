@@ -20,20 +20,22 @@
 #ifndef DOCKINGPANEMANAGER_H
 #define DOCKINGPANEMANAGER_H
 
-#include "DockingPanes_global.h"
 #include <QWidget>
+
+#include "DockingPanes_global.h"
 
 class QBoxLayout;
 class QDomDocument;
 class QDomNode;
-class DockingPaneBase;
-class DockingPaneSplitterContainer;
-class DockingPaneManagerPrivate;
-class DockingFrameStickers;
-class DockingTargetWidget;
-class DockingPaneTitleWidget;
-class DockingPaneFlyoutWidget;
+
 class DockAutoHideButton;
+class DockingFrameStickers;
+class DockingPaneBase;
+class DockingPaneFlyoutWidget;
+class DockingPaneManagerPrivate;
+class DockingPaneSplitterContainer;
+class DockingPaneTitleWidget;
+class DockingTargetWidget;
 
 class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
 {

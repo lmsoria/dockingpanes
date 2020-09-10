@@ -1,15 +1,3 @@
-#include "DockingPaneManager.h"
-#include "DockingPaneContainer.h"
-#include "DockingPaneSplitterContainer.h"
-#include "DockingPaneTabbedContainer.h"
-#include <QDebug>
-#include "DockAutoHideButton.h"
-#include "DockingFrameStickers.h"
-#include "DockingTargetWidget.h"
-#include "DockingPaneClient.h"
-#include "DockingPaneBase.h"
-#include "DockingPaneFlyoutWidget.h"
-#include <QApplication>
 /*
  * This file is part of DockingPanes. (https://github.com/KestrelRadarSensors/dockingpanes)
  *
@@ -29,8 +17,21 @@
  * along with DockingPanes.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <QDomDocument>
+#include <QApplication>
 #include <QBoxLayout>
+#include <QDebug>
+#include <QDomDocument>
+
+#include "DockAutoHideButton.h"
+#include "DockingPaneBase.h"
+#include "DockingPaneClient.h"
+#include "DockingPaneContainer.h"
+#include "DockingPaneFlyoutWidget.h"
+#include "DockingPaneManager.h"
+#include "DockingPaneSplitterContainer.h"
+#include "DockingFrameStickers.h"
+#include "DockingPaneTabbedContainer.h"
+#include "DockingTargetWidget.h"
 
 class DockingPaneManagerPrivate
 {
