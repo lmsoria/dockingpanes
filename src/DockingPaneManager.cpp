@@ -35,24 +35,21 @@
 
 class DockingPaneManagerPrivate
 {
+    Q_DECLARE_PUBLIC(DockingPaneManager)
     public:
         DockingPaneManagerPrivate(DockingPaneManager *parent) :
             q_ptr(parent)
         {
-
         }
 
     private:
         DockingPaneManager * const q_ptr;
-
-        Q_DECLARE_PUBLIC(DockingPaneManager)
-
-    private:
         DockingPaneClient *m_clientPane;
         DockingPaneBase *m_rootPane;
 
+        QWidget *m_dockingWidget;
+        QWidget *m_mainWindow;
         QWidget *m_thisWidget;
-
         QWidget *m_topAutoHidePane;
         QWidget *m_bottomAutoHidePane;
         QWidget *m_leftAutoHidePane;
@@ -60,20 +57,15 @@ class DockingPaneManagerPrivate
 
         QGridLayout *m_autoHideLayout;
 
-        DockingTargetWidget *m_targetWidget;
         DockingFrameStickers *m_dockingStickers;
-
-        QWidget *m_dockingWidget;
+        DockingPaneBase *m_targetPane;
+        DockingPaneFlyoutWidget *m_flyoutWidget;
+        DockingTargetWidget *m_targetWidget;
 
         QList<DockingPaneBase *> m_dockingPaneList;
         QMap<QString, DockingPaneBase *> m_dockingPaneMap;
 
         int m_targetPosition;
-        DockingPaneBase *m_targetPane;
-
-        QWidget *m_mainWindow;
-
-        DockingPaneFlyoutWidget *m_flyoutWidget;
 };
 
 DockingPaneManager::DockingPaneManager() :
