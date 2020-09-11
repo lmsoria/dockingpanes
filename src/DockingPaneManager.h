@@ -58,7 +58,7 @@ class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
 
         DockingPaneBase *setClientWidget(QWidget *widget);
 
-        DockingPaneBase *createPane(QString id, QString title, QWidget *widget, QSize initialSize, DockingPaneManager::DockPosition dockPosition, DockingPaneBase *neighbourPane=NULL);
+        DockingPaneBase *createPane(QString id, QString title, QWidget *widget, QSize initialSize, DockingPaneManager::DockPosition dockPosition, DockingPaneBase *neighbourPane = nullptr);
 
         void closePane(QString id);
         void closePane(DockingPaneBase *dockingPane);
@@ -83,10 +83,10 @@ class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
         void floatingPaneMoved(DockingPaneBase *pane, QPoint cursorPos);
         void floatingPaneEndMove(DockingPaneBase *pane, QPoint cursorPos);
         void floatingPaneStartMove(DockingPaneBase *pane, QPoint cursorPos);
-        void removePinnedButton(DockingPaneBase *dockingPaneContainer, DockingPaneBase *dockingPane=NULL);
+        void removePinnedButton(DockingPaneBase *dockingPaneContainer, DockingPaneBase *dockingPane = nullptr);
 
     protected:
-        bool eventFilter(QObject *obj, QEvent *event);
+        virtual bool eventFilter(QObject *obj, QEvent *event) override;
         DockingPaneManagerPrivate *const d_ptr;
 
     private:
@@ -105,10 +105,9 @@ class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
         void setWidget(QWidget *widget);
         DockingPaneBase *getDockingParent(QWidget *widget);
 
-        void updateAllSplitters(DockingPaneSplitterContainer *parentSplitter=NULL, bool *containsClient=NULL);
+        void updateAllSplitters(DockingPaneSplitterContainer *parentSplitter = nullptr, bool *containsClient = nullptr);
         void updateFloatingPane(DockingPaneBase *currentPane, QPoint cursorPos);
 
-    private slots:
         void onAutoDockButtonClicked(void);
         void onFocusChanged(QWidget *old, QWidget *now);
         void onFlyoutFocusLost(void);
