@@ -21,13 +21,18 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QMap>
 
 namespace Ui {
 class MainWindow;
 }
 
-class DockingPaneManager;
+class QAction;
+class QActionGroup;
 class QLabel;
+class QMenu;
+
+class DockingPaneManager;
 
 class MainWindow : public QMainWindow
 {
@@ -39,11 +44,21 @@ class MainWindow : public QMainWindow
 
     private:
         QLabel *createLabel(QString string);
+        void onSaveLayout();
+        void onLayoutSelected(QAction* current);
+        void populateLayoutMenu();
 
     private:
         Ui::MainWindow *ui;
 
         DockingPaneManager *m_dockingPaneManager;
+
+        QMenu* m_menu_layout;
+        QAction* m_action_save_layout_as;
+        QActionGroup* m_layouts;
+        QMap<QString, QString> m_layouts_data;
+        QString m_current_layout;
+
 };
 
 #endif // MAINWINDOW_H
