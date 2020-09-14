@@ -17,13 +17,14 @@
  * along with DockingPanes.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "mainwindow.h"
-#include "ui_mainwindow.h"
-#include "DockingPaneManager.h"
-#include "DockingPaneBase.h"
+
 #include <QLabel>
 #include <QTextEdit>
 #include <QUuid>
+
+#include "DockingPaneManager.h"
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
