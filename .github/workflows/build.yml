@@ -1,0 +1,118 @@
+# Heavily based off
+# https://git.corli.cn/bf1942/Qv2ray/src/branch/master/.github/workflows/build-qv2ray-cmake.yml
+name: CI
+
+on:
+  pull_request:
+
+jobs:
+  # main job
+  all:
+    # Use a strategy matrix for the CI build
+    strategy:
+      matrix:
+        # Relase and Debug build types
+        build_type: [Release, Debug]
+        # 5.15.0, 5.12.8 and 5.6 Qt versions.
+        qt_version: [5.15.0, 5.12.8, 5.6]
+        # Build on Ubuntu 16.04, 18.04 (ubuntu-latest) and Windows Server 2019 (windows-latest).
+        platform: [ubuntu-16.04, ubuntu-latest, windows-latest]
+        # There's not much support for x86 on Windows/Linux, so
+        # only use x64.
+        arch: [x64]
+        exclude:
+          # For some reason, there's a CRC32 mismatch on a component from
+          # the SDK for Qt 5.6 on Windows, so skip it for now.
+          - platform: windows-latest
+            qt_version: 5.6
+      # Don't abort the workflow if one of the jobs fail.
+      fail-fast: false
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checking out sources
+        uses: actions/checkout@v2
+
+      - name: Install Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: "3.7"
+          architecture: ${{ matrix.arch }}
+
+      - name: Setup Ninja - Ubuntu
+        if: ${{ matrix.platform == 'ubuntu-16.04' || matrix.platform == 'ubuntu-latest' }}
+        run: |
+          sudo apt update
+          sudo apt install -y ninja-build
+
+      - name: Setup Ninja - Windows
+        if: ${{ matrix.platform == 'windows-latest' }}
+        uses: ashutoshvarma/setup-ninja@master
+        with:
+          version: 1.10.0
+
+      - name: Install MSVC compiler - msvc2019 - Windows
+        if: ${{ matrix.platform == 'windows-latest' && matrix.qt_version == '5.15.0' }}
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          toolset: 14.2
+          arch: ${{ matrix.arch }}
+
+      - name: Install MSVC compiler - msvc2017 - Windows
+        if: ${{ matrix.platform == 'windows-latest' && matrix.qt_version == '5.12.8' }}
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          toolset: 14.1
+          arch: ${{ matrix.arch }}
+
+      - name: Install MSVC compiler - msvc2015 - Windows
+        if: ${{ matrix.platform == 'windows-latest' && matrix.qt_version == '5.6' }}
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          toolset: 14.0
+          arch: ${{ matrix.arch }}
+
+      - name: Cache Qt - ${{ matrix.qt_version }}-${{ matrix.arch }}
+        id: cache-qt
+        uses: actions/cache@v1
+        with:
+          path: ../Qt
+          key: QtCache-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.qt_version }}
+
+      - name: Install Qt - ${{ matrix.qt_version }}-${{ matrix.arch }}
+        uses: jurplel/install-qt-action@v2
+        with:
+          # the arch argument will be automatically selected for the selected platform
+          version: ${{ matrix.qt_version }}
+          mirror: "http://mirrors.ocf.berkeley.edu/qt/"
+          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+
+      - name: Build - Ubuntu - ${{ matrix.qt_version }}-${{ matrix.arch }}-${{ matrix.build_type }}
+        if: ${{ matrix.platform == 'ubuntu-16.04' || matrix.platform == 'ubuntu-latest' }}
+        shell: bash
+        run: |
+          mkdir _build
+          cd _build
+          cmake .. -GNinja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_INSTALL_PREFIX=./deployment
+          cmake --build . --parallel $(nproc)
+          cmake --install .
+
+      - name: Build - Windows - ${{ matrix.qt_version }}-${{ matrix.arch }}-${{ matrix.build_type }}
+        if: ${{ matrix.platform == 'windows-latest' }}
+        shell: bash
+        env:
+          CC: cl.exe
+          CXX: cl.exe
+        run: |
+          mkdir _build
+          cd _build
+          cmake .. -GNinja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_INSTALL_PREFIX=./deployment
+          cmake --build . --parallel $(nproc)
+          cmake --install .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@master
+        with:
+          name: dockingpanes-${{ github.sha }}.${{ matrix.build_type }}.${{ matrix.platform }}-${{ matrix.arch }}.qt${{ matrix.qt_version }}
+          path: ./_build/deployment/
