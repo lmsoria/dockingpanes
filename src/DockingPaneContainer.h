@@ -20,19 +20,20 @@
 #ifndef DOCKINGPANECONTAINER_H
 #define DOCKINGPANECONTAINER_H
 
-#include <QWidget>
-#include <QGridLayout>
 #include "DockingPaneBase.h"
-#include "DockingPaneTitleWidget.h"
-#include "DockingToolButton.h"
-#include "DockingPaneGlow.h"
 
-class DockingPaneManager;
+class QGridLayout;
+
 class DockingPaneFlyoutWidget;
+class DockingPaneGlow;
+class DockingPaneManager;
+class DockingPaneTitleWidget;
+class DockingToolButton;
 
 class DockingPaneContainer : public DockingPaneBase
 {
     Q_OBJECT
+    friend class DockingPaneManager;
 
     public:
         enum FlyoutPosition
@@ -43,37 +44,31 @@ class DockingPaneContainer : public DockingPaneBase
             Bottom
         };
 
-    public:
-        explicit DockingPaneContainer(QString title, QString id, QWidget *parent = 0, QWidget *clientWidget = 0);
-        explicit DockingPaneContainer(QWidget *parent = 0);
+        explicit DockingPaneContainer(QString title, QString id, QWidget *parent = nullptr, QWidget *clientWidget = nullptr);
+        explicit DockingPaneContainer(QWidget *parent = nullptr);
+        virtual ~DockingPaneContainer() = default;
+
         void floatPane(QRect rect);
         void floatPane(QPoint pos);
         virtual int getPaneCount(void);
         virtual DockingPaneContainer *getPane(int index);
         virtual DockingPaneFlyoutWidget *openFlyout(bool hasFocus, QWidget *parent, FlyoutPosition pos, DockingPaneContainer *pane);
-        friend class DockingPaneManager;
 
         QWidget *clientWidget();
         virtual void setClientWidget(QWidget *widget);
 
-        virtual void saveLayout(QDomNode *parentNode, bool includeGeometry=false);
+        virtual void saveLayout(QDomNode *parentNode, bool includeGeometry=false) override;
 
         QSize flyoutSize(void);
         void setFlyoutSize(QSize flyoutSize);
         DockingPaneGlow *floatingGlow(void);
-        void setState(DockingPaneBase::State state);
+        virtual void setState(DockingPaneBase::State state) override;
 
     protected:
-        virtual void setName(QString name);
+        virtual void setName(QString name) override;
         void setActivePane(bool active);
-        virtual void paintEvent(QPaintEvent* event);
+        virtual void paintEvent(QPaintEvent* event) override;
 
-    public slots:
-        void onCloseButtonClicked(void);
-        void onPinButtonClicked(void);
-        void onFClicked(void);
-
-    protected slots:
         void onStartDragTitle(QPoint pos);
         void onEndDragTitle(QPoint pos);
         void onMoveDragTitle(QPoint pos);
@@ -82,12 +77,6 @@ class DockingPaneContainer : public DockingPaneBase
         void onEndDragFlyoutTitle(QPoint pos);
         void onMoveDragFlyoutTitle(QPoint pos);
 
-    private slots:
-        void onUnpinContainer(void);
-        void onFocusChanged(QWidget *old, QWidget *now);
-        void onCloseContainer(void);
-
-    protected:
         QWidget *m_headerWidget;
         QWidget *m_clientWidget;
         QGridLayout *m_clientLayout;
@@ -105,7 +94,15 @@ class DockingPaneContainer : public DockingPaneBase
 
         DockingPaneGlow *m_floatingGlow;
 
-        bool m_draggingFlyout;     
+        bool m_draggingFlyout;
+
+     private:
+        void onCloseButtonClicked(void);
+        void onCloseContainer(void);
+        void onFClicked(void);
+        void onFocusChanged(QWidget *old, QWidget *now);
+        void onPinButtonClicked(void);
+        void onUnpinContainer(void);
 };
 
 #endif // DOCKINGPANECONTAINER_H

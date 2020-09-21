@@ -21,6 +21,7 @@
 #include <QBoxLayout>
 #include <QDebug>
 #include <QDomDocument>
+#include <QSplitter>
 
 #include "DockAutoHideButton.h"
 #include "DockingPaneBase.h"
@@ -1044,9 +1045,7 @@ void DockingPaneManager::hidePane(DockingPaneBase *dockingPane)
 
                 button->setPane(paneContainer, paneContainer->getPane(i));
 
-                connect(button, &DockAutoHideButton::clicked, [this](){
-                    openFlyout(static_cast<DockAutoHideButton*>(sender()));
-                });
+                connect(button, SIGNAL(clicked()), this, SLOT(onAutoDockButtonClicked()));
 
                 if ((pos==dockLeft) || (pos==dockRight)) {
                     QVBoxLayout *layout = (QVBoxLayout *) autoHideWidget->layout();
@@ -1164,6 +1163,11 @@ void DockingPaneManager::openFlyout(DockAutoHideButton *button)
     });
 }
 
+void DockingPaneManager::onAutoDockButtonClicked(void)
+{
+    openFlyout((DockAutoHideButton *) sender());
+}
+
 void DockingPaneManager::showPane(DockingPaneBase *dockingPane)
 {
     Q_D(DockingPaneManager);
@@ -1254,6 +1258,8 @@ void DockingPaneManager::showPane(DockingPaneBase *dockingPane)
         }
     }
 }
+
+void DockingPaneManager::onFocusChanged(QWidget*, QWidget*) { }
 
 void DockingPaneManager::floatingPaneStartMove(DockingPaneBase*, QPoint)
 {

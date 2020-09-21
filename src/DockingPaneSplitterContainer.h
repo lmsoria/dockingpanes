@@ -21,14 +21,14 @@
 #define DOCKINGPANESPLITTERCONTAINER_H
 
 #include "DockingPaneBase.h"
-#include <QSplitter>
 
-#include "DockingPaneManager.h"
+class QSplitter;
+
+class DockingPaneManager;
 
 class DockingPaneSplitterContainer : public DockingPaneBase
 {
     Q_OBJECT
-
     friend class DockingPaneManager;
     friend class DockingPaneManagerPrivate;
 
@@ -39,12 +39,12 @@ class DockingPaneSplitterContainer : public DockingPaneBase
             splitHorizontal
         };
 
-    public:
-        DockingPaneSplitterContainer(QWidget *parent = NULL, SplitterDirection direction=splitVertical);
+        DockingPaneSplitterContainer(QWidget* parent = nullptr, SplitterDirection direction=splitVertical);
+        virtual ~DockingPaneSplitterContainer() = default;
 
         SplitterDirection direction(void);
 
-        virtual void saveLayout(QDomNode *parentNode, bool includeGeometry=false);
+        virtual void saveLayout(QDomNode *parentNode, bool includeGeometry=false) override;
 
     private:
         QSplitter *m_splitterWidget;
