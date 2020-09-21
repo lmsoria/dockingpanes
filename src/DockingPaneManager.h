@@ -83,7 +83,6 @@ class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
         DockingPaneManagerPrivate *const d_ptr;
 
     private Q_SLOTS:
-        void onAutoDockButtonClicked();
         void onFocusChanged(QWidget *old, QWidget *now);
 };
 

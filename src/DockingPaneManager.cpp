@@ -1045,7 +1045,9 @@ void DockingPaneManager::hidePane(DockingPaneBase *dockingPane)
 
                 button->setPane(paneContainer, paneContainer->getPane(i));
 
-                connect(button, SIGNAL(clicked()), this, SLOT(onAutoDockButtonClicked()));
+                connect(button, &DockAutoHideButton::clicked, this, [button, this]() {
+                    openFlyout(static_cast<DockAutoHideButton*>(button));
+                });
 
                 if ((pos==dockLeft) || (pos==dockRight)) {
                     QVBoxLayout *layout = (QVBoxLayout *) autoHideWidget->layout();
@@ -1161,11 +1163,6 @@ void DockingPaneManager::openFlyout(DockAutoHideButton *button)
             d->m_flyoutWidget = nullptr;
         }
     });
-}
-
-void DockingPaneManager::onAutoDockButtonClicked(void)
-{
-    openFlyout((DockAutoHideButton *) sender());
 }
 
 void DockingPaneManager::showPane(DockingPaneBase *dockingPane)
