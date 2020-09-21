@@ -55,14 +55,10 @@ class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
         DockingPaneManager();
 
         QWidget *widget(void);
-
         DockingPaneBase *setClientWidget(QWidget *widget);
-
         DockingPaneBase *createPane(QString id, QString title, QWidget *widget, QSize initialSize, DockingPaneManager::DockPosition dockPosition, DockingPaneBase *neighbourPane = nullptr);
-
         void closePane(QString id);
         void closePane(DockingPaneBase *dockingPane);
-
         void hidePane(DockingPaneBase *dockingPane);
         void showPane(DockingPaneBase *dockingPane);
         void deletePane(DockingPaneBase *pane);
@@ -72,13 +68,10 @@ class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
         void replacePane(DockingPaneBase *oldPane, DockingPaneBase *newPane);
         void updateAutohideButton(DockingPaneBase *oldContainer, DockingPaneBase *oldPane, DockingPaneBase *newContainer, DockingPaneBase *newPane);
         DockingPaneBase *dockPane(DockingPaneBase *newPane, DockingPaneManager::DockPosition dockPosition, DockingPaneBase *neighbourPane);
-
         QString saveLayout(QString id);
         bool applyLayout(QString layout);
-
         void setMainWindow(QWidget *widget);
         QWidget *mainWindow(void);
-
         void dumpPaneList(void);
         void floatingPaneMoved(DockingPaneBase *pane, QPoint cursorPos);
         void floatingPaneEndMove(DockingPaneBase *pane, QPoint cursorPos);
@@ -90,27 +83,7 @@ class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
         DockingPaneManagerPrivate *const d_ptr;
 
     private:
-        friend class DockingPaneContainer;
-        friend class DockingPaneTabbedContainer;
-
-        DockPosition getClientPaneDirection(DockingPaneBase *dockingPane);
-        bool containsPane(QWidget *widget, QWidget *child);
-        void saveFloatingState(QDomNode *parentNode);
-
-        DockingPaneBase *restoreLayout(QDomNode node);
-        void savePinnedState(QDomNode *parentNode, QBoxLayout *layout);
-        void restorePinnedPanes(QDomNode *node);
-        void reparentPane(DockingPaneSplitterContainer *previousParentSplitter, DockingPaneBase *dockingPane);
-        void restoreFloatingPanes(QDomNode *node);
-        void setWidget(QWidget *widget);
-        DockingPaneBase *getDockingParent(QWidget *widget);
-
-        void updateAllSplitters(DockingPaneSplitterContainer *parentSplitter = nullptr, bool *containsClient = nullptr);
-        void updateFloatingPane(DockingPaneBase *currentPane, QPoint cursorPos);
-
-        void onAutoDockButtonClicked(void);
         void onFocusChanged(QWidget *old, QWidget *now);
-        void onFlyoutFocusLost(void);
 };
 
 #endif // DOCKINGPANEMANAGER_H

@@ -30,6 +30,7 @@ class DockingPaneSplitterContainer : public DockingPaneBase
     Q_OBJECT
 
     friend class DockingPaneManager;
+    friend class DockingPaneManagerPrivate;
 
     public:
         enum SplitterDirection

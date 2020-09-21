@@ -42,7 +42,7 @@ class DockingPaneBase : public QWidget
     public:
         DockingPaneBase(QWidget *parent=NULL);
 
-        friend class DockingPaneManager;
+        friend class DockingPaneManagerPrivate;
 
         QString name(void);
         QString id(void);

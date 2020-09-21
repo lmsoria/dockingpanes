@@ -40,6 +40,7 @@ class DockingPaneTabbedContainer : public DockingPaneContainer
         bool addPane(DockingPaneContainer *child);
 
         friend class DockingPaneManager;
+        friend class DockingPaneManagerPrivate;
 
         virtual void saveLayout(QDomNode *parentNode, bool includeGeometry=false);
 

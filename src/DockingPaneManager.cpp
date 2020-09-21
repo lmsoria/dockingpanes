@@ -42,6 +42,431 @@ class DockingPaneManagerPrivate
         {
         }
 
+        DockingPaneManager::DockPosition getClientPaneDirection(DockingPaneBase *dockingPane)
+        {
+            DockingPaneSplitterContainer *parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(getDockingParent(m_clientPane));
+
+            while(parentSplitter) {
+                for (int i=0;i<parentSplitter->m_splitterWidget->count();i++) {
+                    if (containsPane(parentSplitter->m_splitterWidget->widget(i), dockingPane)) {
+                        if (parentSplitter->direction() == DockingPaneSplitterContainer::splitVertical) {
+                            for (int j=0;j<i;j++) {
+                                if (containsPane(parentSplitter->m_splitterWidget->widget(j), m_clientPane))
+                                    return(DockingPaneManager::dockTop);
+                            }
+
+                            return(DockingPaneManager::dockBottom);
+                        } else {
+                            for (int j=0;j<i;j++) {
+                                if (containsPane(parentSplitter->m_splitterWidget->widget(j), m_clientPane)) {
+                                    return(DockingPaneManager::dockLeft);
+                                }
+                            }
+
+                            return(DockingPaneManager::dockRight);
+                        }
+
+                        return(DockingPaneManager::dockLeft);
+                    }
+                }
+
+                parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(getDockingParent(parentSplitter->parentWidget()));
+            }
+
+            return(DockingPaneManager::dockLeft);
+        }
+
+        bool containsPane(QWidget *widget, QWidget *child)
+        {
+            DockingPaneSplitterContainer *splitter = qobject_cast<DockingPaneSplitterContainer *>(widget);
+
+            if (!splitter) {
+                if (widget==child) {
+                    return(true);
+                } else {
+                    return(false);
+                }
+            }
+
+            for (int i=0;i<splitter->m_splitterWidget->count();i++) {
+                if (containsPane(splitter->m_splitterWidget->widget(i), child)) {
+                    return(true);
+                }
+            }
+
+            return(false);
+        }
+
+        void saveFloatingState(QDomNode *parentNode)
+        {
+            foreach(DockingPaneBase *basePane, m_dockingPaneList) {
+                if (basePane->state()==DockingPaneBase::Floating) {
+                    basePane->saveLayout(parentNode, true);
+                }
+            }
+        }
+
+        DockingPaneBase *restoreLayout(QDomNode node)
+        {
+            Q_Q(DockingPaneManager);
+
+            if (node.nodeName()=="DockingPaneClient") {
+                return(m_clientPane);
+            }
+
+            if (node.nodeName()=="DockingPaneContainer") {
+                QDomElement nodeElement = node.toElement();
+                QString containerId;
+
+                containerId = nodeElement.attribute("id");
+
+                if (m_dockingPaneMap.contains(containerId)) {
+                    return(m_dockingPaneMap[containerId]);
+                }
+
+                return(nullptr);
+            }
+
+            if (node.nodeName()=="DockingPaneTabbedContainer") {
+                QDomElement nodeElement = node.toElement();
+                QString containerId, selectedTab;
+                DockingPaneContainer *selectedContainer = nullptr;
+                int paneCount = 0;
+
+                DockingPaneTabbedContainer *tabbedContainer = new DockingPaneTabbedContainer();
+
+                tabbedContainer->setId(nodeElement.attribute("id"));
+
+                selectedTab = nodeElement.attribute("selectedTab");
+
+                tabbedContainer->m_dockingManager = q;
+
+                m_dockingPaneList.append(tabbedContainer);
+
+                QDomNodeList nodeList = nodeElement.elementsByTagName("pane");
+
+                for(int i=0;i<nodeList.count();i++) {
+                    containerId = nodeList.at(i).toElement().attribute("id");
+
+                    if (m_dockingPaneMap.contains(containerId)) {
+                        DockingPaneContainer *container = qobject_cast<DockingPaneContainer *>(m_dockingPaneMap[containerId]);
+
+                        if (container) {
+                            if (containerId==selectedTab) {
+                                selectedContainer = container;
+                            }
+
+                            tabbedContainer->addPane(container);
+                            container->setState(DockingPaneBase::Tabbed);
+
+                            paneCount++;
+                        }
+                    }
+                }
+
+                if (paneCount) {
+                    m_dockingPaneMap[nodeElement.attribute("id")] = tabbedContainer;
+
+                    if (selectedContainer) {
+                        tabbedContainer->setVisiblePane(selectedContainer);
+                    }
+
+                    return(tabbedContainer);
+                }
+
+                delete tabbedContainer;
+
+                return(nullptr);
+            }
+
+            if (node.nodeName()=="DockingPaneSplitterContainer")
+            {
+                QDomElement nodeElement = node.toElement();
+                DockingPaneSplitterContainer *newSplitter;
+
+                DockingPaneBase *first = restoreLayout(nodeElement.childNodes().at(0));
+                DockingPaneBase *second = restoreLayout(nodeElement.childNodes().at(1));;
+
+                if (first && second) {
+                    newSplitter = new DockingPaneSplitterContainer;
+
+                    newSplitter->m_splitterWidget->addWidget(first);
+                    newSplitter->m_splitterWidget->addWidget(second);
+
+                    first->setVisible(true);
+                    second->setVisible(true);
+
+                    first->setState(DockingPaneBase::Docked);
+                    second->setState(DockingPaneBase::Docked);
+
+                    // *****
+                    // this is not a bug!  First restore restores the splitter state, second restore restores
+                    // the child state....weird, but necessary to ensure child windows end up correct size!
+                    // *****
+
+                    newSplitter->m_splitterWidget->restoreState(QByteArray::fromBase64(nodeElement.attribute("state").toLatin1()));
+                    newSplitter->m_splitterWidget->restoreState(QByteArray::fromBase64(nodeElement.attribute("state").toLatin1()));
+
+                    return(newSplitter);
+                } else {
+                    if (first) {
+                        return(first);
+                    }
+
+                    if (second) {
+                        return(second);
+                    }
+                }
+            }
+
+            return(nullptr);
+        }
+
+        void savePinnedState(QDomNode *parentNode, QBoxLayout *layout)
+        {
+            QDomDocument doc = parentNode->ownerDocument();
+            QList<QString> savedIds;
+
+            for(int i=0;i<layout->count();i++) {
+                DockAutoHideButton *autoHideButton = qobject_cast<DockAutoHideButton *>(layout->itemAt(i)->widget());
+
+                if (autoHideButton) {
+                    QDomDocument doc = parentNode->ownerDocument();
+
+                    if (!savedIds.contains(autoHideButton->container()->id())) {
+                        QDomElement domElement = doc.createElement("pane");
+
+                        domElement.setAttribute("id", autoHideButton->container()->id());
+
+                        parentNode->appendChild(domElement);
+
+                        savedIds.append(autoHideButton->container()->id());
+                    }
+                }
+            }
+        }
+
+        void restorePinnedPanes(QDomNode *node)
+        {
+            Q_Q(DockingPaneManager);
+            QDomNodeList nodeList = node->childNodes();
+
+            for(int i=0;i<nodeList.count();i++) {
+                QDomElement domElement = nodeList.at(i).toElement();
+
+                if (domElement.nodeName()=="pane") {
+                    QString paneId = domElement.attribute("id");
+
+                    if (m_dockingPaneMap.contains(paneId)) {
+                        q->hidePane(m_dockingPaneMap[paneId]);
+                    }
+                }
+            }
+        }
+
+        void restoreFloatingPanes(QDomNode *node)
+        {
+            QDomNodeList nodeList = node->childNodes();
+
+            for(int i=0;i<nodeList.count();i++) {
+                QDomElement domElement = nodeList.at(i).toElement();
+
+                QString paneId = domElement.attribute("id");
+
+                if (m_dockingPaneMap.contains(paneId)) {
+                    DockingPaneContainer *container = qobject_cast<DockingPaneContainer *>(m_dockingPaneMap[paneId]);
+
+                    if (container) {
+                        container->restoreGeometry(QByteArray::fromBase64(domElement.attribute("geometry").toLatin1()));
+                        container->floatPane(QPoint(0,0));
+                    }
+                }
+            }
+        }
+
+        void reparentPane(DockingPaneSplitterContainer *previousParentSplitter, DockingPaneBase *dockingPane)
+        {
+            DockingPaneBase *paneParent = getDockingParent(previousParentSplitter->parentWidget());
+            DockingPaneSplitterContainer *parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(paneParent);
+
+            if (!paneParent) {
+                setWidget(dockingPane);
+
+                m_rootPane = dockingPane;
+
+                delete previousParentSplitter;
+
+                return;
+            }
+
+            if (parentSplitter) {
+                QByteArray state = parentSplitter->m_splitterWidget->saveState();
+
+                parentSplitter->m_splitterWidget->insertWidget(parentSplitter->m_splitterWidget->indexOf(previousParentSplitter), dockingPane);
+
+                delete previousParentSplitter;
+
+                parentSplitter->m_splitterWidget->restoreState(state);
+            }
+
+            updateAllSplitters();
+        }
+
+        DockingPaneBase *getDockingParent(QWidget *widget)
+        {
+            while(widget) {
+                if (qobject_cast<DockingPaneSplitterContainer *>(widget)) {
+                    return(qobject_cast<DockingPaneSplitterContainer *>(widget));
+                }
+                widget = widget->parentWidget();
+            }
+            return(nullptr);
+        }
+
+        void updateAllSplitters(DockingPaneSplitterContainer *parentSplitter = nullptr, bool *containsClient = nullptr)
+        {
+            DockingPaneClient *clientContainer;
+            DockingPaneSplitterContainer *childSplitter;
+
+            if (!parentSplitter) {
+                DockingPaneSplitterContainer *rootSplitter = qobject_cast<DockingPaneSplitterContainer *>(m_rootPane);
+                bool containsClient;
+
+                containsClient = 0;
+
+                if (rootSplitter) {
+                    updateAllSplitters(rootSplitter, &containsClient);
+                }
+
+                return;
+            }
+
+            for (int i=0;i<parentSplitter->m_splitterWidget->count();i++) {
+                bool childContainsClient;
+
+                childSplitter = qobject_cast<DockingPaneSplitterContainer *>(parentSplitter->m_splitterWidget->widget(i));
+                clientContainer = qobject_cast<DockingPaneClient *>(parentSplitter->m_splitterWidget->widget(i));
+
+                if (childSplitter) {
+                    childContainsClient = false;
+
+                    updateAllSplitters(childSplitter, &childContainsClient);
+
+                    if (childContainsClient) {
+                        parentSplitter->m_splitterWidget->setStretchFactor(i, 1);
+                    } else {
+                        parentSplitter->m_splitterWidget->setStretchFactor(i, 0);
+                    }
+                } else {
+                    if (clientContainer) {
+                        *containsClient = true;
+
+                        parentSplitter->m_splitterWidget->setStretchFactor(i, 1);
+                    } else {
+                        parentSplitter->m_splitterWidget->setStretchFactor(i, 0);
+                    }
+                }
+            }
+        }
+
+        void setWidget(QWidget *widget)
+        {
+            QLayoutItem *child;
+            while((child = m_thisWidget->layout()->takeAt(0)) != nullptr);
+            if (widget) {
+                m_thisWidget->layout()->addWidget(widget);
+            }
+        }
+
+        void updateFloatingPane(DockingPaneBase *currentPane, QPoint cursorPos)
+        {
+            static QRect lastHitRect, lastStickerRect;
+            QRect paneRect;
+
+            if (m_thisWidget->rect().contains(m_thisWidget->mapFromGlobal(cursorPos))) {
+                paneRect.setTopLeft(currentPane->mapToGlobal(QPoint(0,0)));
+                paneRect.setBottomRight(currentPane->mapToGlobal(QPoint(currentPane->width(), currentPane->height())));
+
+                if (paneRect.contains(cursorPos)) {
+                    DockingFrameStickers::DockingPosition dockPos;
+
+                    if (m_dockingStickers) {
+                        QPoint pt(paneRect.center().x()-(m_dockingStickers->width()/2.0), paneRect.center().y()-(m_dockingStickers->height()/2.0));
+
+                        if (lastStickerRect!=paneRect) {
+                            m_dockingStickers->hide();
+                        }
+
+                        if (currentPane==m_clientPane) {
+                            m_dockingStickers->setTabVisible(false);
+                        } else {
+                            m_dockingStickers->setTabVisible(true);
+                        }
+
+                        m_dockingStickers->move(pt);
+                        m_dockingStickers->show();
+
+                        lastStickerRect = paneRect;
+                    }
+
+                    if (m_dockingStickers->getHit(cursorPos, &dockPos)) {
+                        m_targetPosition = dockPos;
+
+                        switch((DockingFrameStickers::DockingPosition) dockPos) {
+                            case DockingFrameStickers::paneLeft: {
+                                paneRect.setRight(paneRect.left()+(paneRect.width()*0.25));
+
+                                break;
+                            }
+
+                            case DockingFrameStickers::paneRight: {
+                                paneRect.setLeft(paneRect.right()-(paneRect.width()*0.25));
+
+                                break;
+                            }
+
+                            case DockingFrameStickers::paneTop: {
+                                paneRect.setBottom(paneRect.top()+(paneRect.height()*0.25));
+
+                                break;
+                            }
+
+                            case DockingFrameStickers::paneBottom: {
+                                paneRect.setTop(paneRect.bottom()-(paneRect.height()*0.25));
+
+                                break;
+                            }
+
+                            default: {
+                                break;
+                            }
+                        }
+
+                        m_targetPane = currentPane;
+
+                        if (m_targetWidget) {
+                            if (lastHitRect!=paneRect) {
+                                m_targetWidget->hide();
+                            }
+
+                            m_targetWidget->move(paneRect.topLeft());
+                            m_targetWidget->resize(paneRect.size());
+                            m_targetWidget->show();
+
+                            lastHitRect = paneRect;
+                        }
+                    } else {
+                        if (m_targetWidget) {
+                            m_targetWidget->hide();
+                        }
+                    }
+                }
+            } else {
+                m_targetWidget->hide();
+                m_dockingStickers->hide();
+            }
+        }
+
     private:
         DockingPaneManager * const q_ptr;
         DockingPaneClient *m_clientPane;
@@ -90,7 +515,7 @@ DockingPaneManager::DockingPaneManager() :
     d->m_thisWidget->layout()->setMargin(5);
     d->m_thisWidget->layout()->setSpacing(0);
 
-    setWidget(d->m_rootPane);
+    d->setWidget(d->m_rootPane);
 
     d->m_targetWidget = new DockingTargetWidget();
     d->m_dockingStickers = new DockingFrameStickers();
@@ -106,32 +531,6 @@ DockingPaneBase *DockingPaneManager::setClientWidget(QWidget *widget)
     d->m_clientPane->setWidget(widget);
 
     return(d->m_clientPane);
-}
-
-void DockingPaneManager::setWidget(QWidget *widget)
-{
-    Q_D(DockingPaneManager);
-
-    QLayoutItem *child;
-
-    while((child = d->m_thisWidget->layout()->takeAt(0)) != nullptr);
-
-    if (widget) {
-        d->m_thisWidget->layout()->addWidget(widget);
-    }
-}
-
-DockingPaneBase *DockingPaneManager::getDockingParent(QWidget *widget)
-{
-    while(widget) {
-        if (qobject_cast<DockingPaneSplitterContainer *>(widget)) {
-            return(qobject_cast<DockingPaneSplitterContainer *>(widget));
-        }
-
-        widget = widget->parentWidget();
-    }
-
-    return(nullptr);
 }
 
 DockingPaneBase *DockingPaneManager::createPane(QString id, QString title, QWidget *widget, QSize initialSize, DockingPaneManager::DockPosition dockPosition, DockingPaneBase *neighbourPane)
@@ -216,9 +615,9 @@ DockingPaneBase *DockingPaneManager::dockPane(DockingPaneBase *paneToDock, DockP
     if (neighbourPane==nullptr) {
         neighbourPane = d->m_rootPane;
 
-        parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(getDockingParent(neighbourPane));
+        parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(d_ptr->getDockingParent(neighbourPane));
     } else {
-        parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(getDockingParent(neighbourPane->parentWidget()));
+        parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(d_ptr->getDockingParent(neighbourPane->parentWidget()));
     }
 
     if ( (dockPosition==dockLeft) || (dockPosition==dockRight)) {
@@ -306,7 +705,7 @@ DockingPaneBase *DockingPaneManager::dockPane(DockingPaneBase *paneToDock, DockP
     }
 
     if (neighbourPane==d->m_rootPane) {
-        setWidget(newSplitter);
+        d->setWidget(newSplitter);
 
         d->m_rootPane = newSplitter;
     } else {
@@ -317,7 +716,7 @@ DockingPaneBase *DockingPaneManager::dockPane(DockingPaneBase *paneToDock, DockP
         }
     }
 
-    updateAllSplitters();
+    d->updateAllSplitters();
 
     paneToDock->setState(DockingPaneBase::Docked);
 
@@ -357,7 +756,7 @@ void DockingPaneManager::updateAutohideButton(DockingPaneBase *oldContainer, Doc
 
 void DockingPaneManager::replacePane(DockingPaneBase *oldPane, DockingPaneBase *newPane)
 {
-    DockingPaneSplitterContainer *parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(getDockingParent(oldPane));
+    DockingPaneSplitterContainer *parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(d_ptr->getDockingParent(oldPane));
 
     if (parentSplitter) {
         QByteArray state = parentSplitter->m_splitterWidget->saveState();
@@ -375,55 +774,6 @@ void DockingPaneManager::replacePane(DockingPaneBase *oldPane, DockingPaneBase *
         // then we are in a splitter, otherwise the old pane was floating
     }
 }
-
-void DockingPaneManager::updateAllSplitters(DockingPaneSplitterContainer *parentSplitter, bool *containsClient)
-{
-    Q_D(DockingPaneManager);
-
-    DockingPaneClient *clientContainer;
-    DockingPaneSplitterContainer *childSplitter;
-
-    if (!parentSplitter) {
-        DockingPaneSplitterContainer *rootSplitter = qobject_cast<DockingPaneSplitterContainer *>(d->m_rootPane);
-        bool containsClient;
-
-        containsClient = 0;
-
-        if (rootSplitter) {
-            updateAllSplitters(rootSplitter, &containsClient);
-        }
-
-        return;
-    }
-
-    for (int i=0;i<parentSplitter->m_splitterWidget->count();i++) {
-        bool childContainsClient;
-
-        childSplitter = qobject_cast<DockingPaneSplitterContainer *>(parentSplitter->m_splitterWidget->widget(i));
-        clientContainer = qobject_cast<DockingPaneClient *>(parentSplitter->m_splitterWidget->widget(i));
-
-        if (childSplitter) {
-            childContainsClient = false;
-
-            updateAllSplitters(childSplitter, &childContainsClient);
-
-            if (childContainsClient) {
-                parentSplitter->m_splitterWidget->setStretchFactor(i, 1);
-            } else {
-                parentSplitter->m_splitterWidget->setStretchFactor(i, 0);
-            }
-        } else {
-            if (clientContainer) {
-                *containsClient = true;
-
-                parentSplitter->m_splitterWidget->setStretchFactor(i, 1);
-            } else {
-                parentSplitter->m_splitterWidget->setStretchFactor(i, 0);
-            }
-        }
-    }
-}
-
 
 bool DockingPaneManager::eventFilter(QObject *obj, QEvent *event)
 {
@@ -593,7 +943,8 @@ void DockingPaneManager::removePinnedButton(DockingPaneBase *dockingPaneContaine
 
 void DockingPaneManager::closePane(DockingPaneBase *dockingPane)
 {
-    DockingPaneSplitterContainer *parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(getDockingParent(dockingPane->parentWidget()));
+    Q_D(DockingPaneManager);
+    DockingPaneSplitterContainer *parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(d_ptr->getDockingParent(dockingPane->parentWidget()));
 
     if (dockingPane->state()==DockingPaneBase::Pinned) {
         removePinnedButton(dockingPane);
@@ -615,7 +966,7 @@ void DockingPaneManager::closePane(DockingPaneBase *dockingPane)
             // single container left in splitter, so needs reparenting
             // *****
 
-            reparentPane(parentSplitter, qobject_cast<DockingPaneBase *>(parentSplitter->m_splitterWidget->widget(0)));
+            d->reparentPane(parentSplitter, qobject_cast<DockingPaneBase *>(parentSplitter->m_splitterWidget->widget(0)));
         } else {
             bool parentPaneVisible = false;
 
@@ -633,47 +984,17 @@ void DockingPaneManager::closePane(DockingPaneBase *dockingPane)
     }
 }
 
-void DockingPaneManager::reparentPane(DockingPaneSplitterContainer *previousParentSplitter, DockingPaneBase *dockingPane)
-{
-    Q_D(DockingPaneManager);
-
-    DockingPaneBase *paneParent = getDockingParent(previousParentSplitter->parentWidget());
-    DockingPaneSplitterContainer *parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(paneParent);
-
-    if (!paneParent) {
-        setWidget(dockingPane);
-
-        d->m_rootPane = dockingPane;
-
-        delete previousParentSplitter;
-
-        return;
-    }
-
-    if (parentSplitter) {
-        QByteArray state = parentSplitter->m_splitterWidget->saveState();
-
-        parentSplitter->m_splitterWidget->insertWidget(parentSplitter->m_splitterWidget->indexOf(previousParentSplitter), dockingPane);
-
-        delete previousParentSplitter;
-
-        parentSplitter->m_splitterWidget->restoreState(state);
-    }
-
-    updateAllSplitters();
-}
-
 void DockingPaneManager::hidePane(DockingPaneBase *dockingPane)
 {
     Q_D(DockingPaneManager);
 
-    DockingPaneSplitterContainer *parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(getDockingParent(dockingPane->parentWidget()));
+    DockingPaneSplitterContainer *parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(d_ptr->getDockingParent(dockingPane->parentWidget()));
 
     if (parentSplitter) {
         bool parentPaneVisible = false;
 
         if (DockingPaneContainer *paneContainer = qobject_cast<DockingPaneContainer *>(dockingPane)) {
-            DockPosition pos = getClientPaneDirection(paneContainer);
+            DockPosition pos = d->getClientPaneDirection(paneContainer);
 
             paneContainer->setFlyoutSize(dockingPane->size());
 
@@ -723,7 +1044,9 @@ void DockingPaneManager::hidePane(DockingPaneBase *dockingPane)
 
                 button->setPane(paneContainer, paneContainer->getPane(i));
 
-                connect(button, SIGNAL(clicked()), this, SLOT(onAutoDockButtonClicked()));
+                connect(button, &DockAutoHideButton::clicked, [this](){
+                    openFlyout(static_cast<DockAutoHideButton*>(sender()));
+                });
 
                 if ((pos==dockLeft) || (pos==dockRight)) {
                     QVBoxLayout *layout = (QVBoxLayout *) autoHideWidget->layout();
@@ -764,69 +1087,12 @@ void DockingPaneManager::hidePane(DockingPaneBase *dockingPane)
     }
 }
 
-DockingPaneManager::DockPosition DockingPaneManager::getClientPaneDirection(DockingPaneBase *dockingPane)
-{
-    Q_D(DockingPaneManager);
-
-    DockingPaneSplitterContainer *parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(getDockingParent(d->m_clientPane));
-
-    while(parentSplitter) {
-        for (int i=0;i<parentSplitter->m_splitterWidget->count();i++) {
-            if (containsPane(parentSplitter->m_splitterWidget->widget(i), dockingPane)) {
-                if (parentSplitter->direction() == DockingPaneSplitterContainer::splitVertical) {
-                    for (int j=0;j<i;j++) {
-                        if (containsPane(parentSplitter->m_splitterWidget->widget(j), d->m_clientPane))
-                            return(dockTop);
-                    }
-
-                    return(dockBottom);
-                } else {
-                    for (int j=0;j<i;j++) {
-                        if (containsPane(parentSplitter->m_splitterWidget->widget(j), d->m_clientPane)) {
-                            return(dockLeft);
-                        }
-                    }
-
-                    return(dockRight);
-                }
-
-                return(dockLeft);
-            }
-        }
-
-        parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(getDockingParent(parentSplitter->parentWidget()));
-    }
-
-    return(DockingPaneManager::dockLeft);
-}
-
-bool DockingPaneManager::containsPane(QWidget *widget, QWidget *child)
-{
-    DockingPaneSplitterContainer *splitter = qobject_cast<DockingPaneSplitterContainer *>(widget);
-
-    if (!splitter) {
-        if (widget==child) {
-            return(true);
-        } else {
-            return(false);
-        }
-    }
-
-    for (int i=0;i<splitter->m_splitterWidget->count();i++) {
-        if (containsPane(splitter->m_splitterWidget->widget(i), child)) {
-            return(true);
-        }
-    }
-
-    return(false);
-}
-
 void DockingPaneManager::unpinPane(DockingPaneBase *pane)
 {
     Q_D(DockingPaneManager);
 
     if (DockingPaneContainer *container = qobject_cast<DockingPaneContainer *>(pane)) {
-        DockingPaneSplitterContainer *parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(getDockingParent(container->parentWidget()));
+        DockingPaneSplitterContainer *parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(d_ptr->getDockingParent(container->parentWidget()));
 
         container->setFlyoutSize(QSize());
 
@@ -836,7 +1102,7 @@ void DockingPaneManager::unpinPane(DockingPaneBase *pane)
         while(parentSplitter) {
             parentSplitter->show();
 
-            parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(getDockingParent(parentSplitter->parentWidget()));
+            parentSplitter = qobject_cast<DockingPaneSplitterContainer *>(d_ptr->getDockingParent(parentSplitter->parentWidget()));
         }
     }
 
@@ -889,23 +1155,13 @@ void DockingPaneManager::openFlyout(DockAutoHideButton *button)
 
     d->m_flyoutWidget = button->container()->openFlyout(true, d->m_thisWidget, (DockingPaneContainer::FlyoutPosition) button->position(), qobject_cast<DockingPaneContainer *>(button->pane()));
 
-    connect(d->m_flyoutWidget, SIGNAL(flyoutFocusLost()), this, SLOT(onFlyoutFocusLost()));
-}
-
-void DockingPaneManager::onAutoDockButtonClicked(void)
-{
-    openFlyout((DockAutoHideButton *) sender());
-}
-
-void DockingPaneManager::onFlyoutFocusLost(void)
-{
-    Q_D(DockingPaneManager);
-
-    if (d->m_flyoutWidget) {
-        d->m_flyoutWidget->restorePaneWidget();
-        d->m_flyoutWidget->deleteLater();
-        d->m_flyoutWidget = nullptr;
-    }
+    connect(d->m_flyoutWidget, &DockingPaneFlyoutWidget::flyoutFocusLost, [d]() {
+        if (d->m_flyoutWidget) {
+            d->m_flyoutWidget->restorePaneWidget();
+            d->m_flyoutWidget->deleteLater();
+            d->m_flyoutWidget = nullptr;
+        }
+    });
 }
 
 void DockingPaneManager::showPane(DockingPaneBase *dockingPane)
@@ -997,11 +1253,6 @@ void DockingPaneManager::showPane(DockingPaneBase *dockingPane)
             break;
         }
     }
-}
-
-void DockingPaneManager::onFocusChanged(QWidget*, QWidget*)
-{
-    // Do nothing.
 }
 
 void DockingPaneManager::floatingPaneStartMove(DockingPaneBase*, QPoint)
@@ -1110,107 +1361,18 @@ void DockingPaneManager::floatingPaneMoved(DockingPaneBase *pane, QPoint cursorP
     d->m_targetPosition = -1;
     d->m_targetPane = nullptr;
 
-    updateFloatingPane(d->m_clientPane, cursorPos);
+    d->updateFloatingPane(d->m_clientPane, cursorPos);
 
     foreach(DockingPaneBase *searchPane, d->m_dockingPaneList) {
         DockingPaneContainer *currentPane = qobject_cast<DockingPaneContainer *>(searchPane);
 
         if ( (currentPane!=pane) && (currentPane->state()==DockingPaneBase::Docked) ) {
-            updateFloatingPane(currentPane, cursorPos);
+            d->updateFloatingPane(currentPane, cursorPos);
         }
     }
 }
 
-void DockingPaneManager::updateFloatingPane(DockingPaneBase *currentPane, QPoint cursorPos)
-{
-    Q_D(DockingPaneManager);
 
-    static QRect lastHitRect, lastStickerRect;
-    QRect paneRect;
-
-    if (d->m_thisWidget->rect().contains(d->m_thisWidget->mapFromGlobal(cursorPos))) {
-        paneRect.setTopLeft(currentPane->mapToGlobal(QPoint(0,0)));
-        paneRect.setBottomRight(currentPane->mapToGlobal(QPoint(currentPane->width(), currentPane->height())));
-
-        if (paneRect.contains(cursorPos)) {
-            DockingFrameStickers::DockingPosition dockPos;
-
-            if (d->m_dockingStickers) {
-                QPoint pt(paneRect.center().x()-(d->m_dockingStickers->width()/2.0), paneRect.center().y()-(d->m_dockingStickers->height()/2.0));
-
-                if (lastStickerRect!=paneRect) {
-                    d->m_dockingStickers->hide();
-                }
-
-                if (currentPane==d->m_clientPane) {
-                    d->m_dockingStickers->setTabVisible(false);
-                } else {
-                    d->m_dockingStickers->setTabVisible(true);
-                }
-
-                d->m_dockingStickers->move(pt);
-                d->m_dockingStickers->show();
-
-                lastStickerRect = paneRect;
-            }
-
-            if (d->m_dockingStickers->getHit(cursorPos, &dockPos)) {
-                d->m_targetPosition = dockPos;
-
-                switch((DockingFrameStickers::DockingPosition) dockPos) {
-                    case DockingFrameStickers::paneLeft: {
-                        paneRect.setRight(paneRect.left()+(paneRect.width()*0.25));
-
-                        break;
-                    }
-
-                    case DockingFrameStickers::paneRight: {
-                        paneRect.setLeft(paneRect.right()-(paneRect.width()*0.25));
-
-                        break;
-                    }
-
-                    case DockingFrameStickers::paneTop: {
-                        paneRect.setBottom(paneRect.top()+(paneRect.height()*0.25));
-
-                        break;
-                    }
-
-                    case DockingFrameStickers::paneBottom: {
-                        paneRect.setTop(paneRect.bottom()-(paneRect.height()*0.25));
-
-                        break;
-                    }
-
-                    default: {
-                        break;
-                    }
-                }
-
-                d->m_targetPane = currentPane;
-
-                if (d->m_targetWidget) {
-                    if (lastHitRect!=paneRect) {
-                        d->m_targetWidget->hide();
-                    }
-
-                    d->m_targetWidget->move(paneRect.topLeft());
-                    d->m_targetWidget->resize(paneRect.size());
-                    d->m_targetWidget->show();
-
-                    lastHitRect = paneRect;
-                }
-            } else {
-                if (d->m_targetWidget) {
-                    d->m_targetWidget->hide();
-                }
-            }
-        }
-    } else {
-        d->m_targetWidget->hide();
-        d->m_dockingStickers->hide();
-    }
-}
 
 QString DockingPaneManager::saveLayout(QString layoutId)
 {
@@ -1230,14 +1392,14 @@ QString DockingPaneManager::saveLayout(QString layoutId)
 
     QDomNode pinNode = xmlRootNode.appendChild(doc.createElement("pinnedPanes"));
 
-    savePinnedState(&pinNode, qobject_cast<QBoxLayout *>(d->m_leftAutoHidePane->layout()));
-    savePinnedState(&pinNode, qobject_cast<QBoxLayout *>(d->m_rightAutoHidePane->layout()));
-    savePinnedState(&pinNode, qobject_cast<QBoxLayout *>(d->m_topAutoHidePane->layout()));
-    savePinnedState(&pinNode, qobject_cast<QBoxLayout *>(d->m_bottomAutoHidePane->layout()));
+    d->savePinnedState(&pinNode, qobject_cast<QBoxLayout *>(d->m_leftAutoHidePane->layout()));
+    d->savePinnedState(&pinNode, qobject_cast<QBoxLayout *>(d->m_rightAutoHidePane->layout()));
+    d->savePinnedState(&pinNode, qobject_cast<QBoxLayout *>(d->m_topAutoHidePane->layout()));
+    d->savePinnedState(&pinNode, qobject_cast<QBoxLayout *>(d->m_bottomAutoHidePane->layout()));
 
     QDomNode floatingNode = xmlRootNode.appendChild(doc.createElement("floatingPanes"));
 
-    saveFloatingState(&floatingNode);
+    d->saveFloatingState(&floatingNode);
 
     return(doc.toString());
 }
@@ -1272,7 +1434,7 @@ bool DockingPaneManager::applyLayout(QString layout)
         closePane(pane);
     }
 
-    d->m_rootPane = restoreLayout(docElement.firstChildElement("dockedLayout").firstChild());
+    d->m_rootPane = d->restoreLayout(docElement.firstChildElement("dockedLayout").firstChild());
 
     // *****
     // check if the restored layout is valid
@@ -1283,7 +1445,7 @@ bool DockingPaneManager::applyLayout(QString layout)
         // check that the restored layout contains the client, if not, something is very wrong....
         // *****
 
-        if (!containsPane(d->m_rootPane, d->m_clientPane)) {
+        if (!d->containsPane(d->m_rootPane, d->m_clientPane)) {
             d->m_rootPane = d->m_clientPane;
 
             returnValue = false;
@@ -1291,213 +1453,21 @@ bool DockingPaneManager::applyLayout(QString layout)
             QDomNode pinnedPanes = docElement.firstChildElement("pinnedPanes");
             QDomNode floatingPanes = docElement.firstChildElement("floatingPanes");
 
-            restorePinnedPanes(&pinnedPanes);
-            restoreFloatingPanes(&floatingPanes);
+            d->restorePinnedPanes(&pinnedPanes);
+            d->restoreFloatingPanes(&floatingPanes);
         }
     } else {
         d->m_rootPane = d->m_clientPane;
         returnValue = false;
     }
 
-    setWidget(d->m_rootPane);
+    d->setWidget(d->m_rootPane);
 
-    updateAllSplitters();
+    d->updateAllSplitters();
 
     d->m_thisWidget->setUpdatesEnabled(true);
 
     return(returnValue);
-}
-
-DockingPaneBase *DockingPaneManager::restoreLayout(QDomNode node)
-{
-    Q_D(DockingPaneManager);
-
-    if (node.nodeName()=="DockingPaneClient") {
-        return(d->m_clientPane);
-    }
-
-    if (node.nodeName()=="DockingPaneContainer") {
-        QDomElement nodeElement = node.toElement();
-        QString containerId;
-
-        containerId = nodeElement.attribute("id");
-
-        if (d->m_dockingPaneMap.contains(containerId)) {
-            return(d->m_dockingPaneMap[containerId]);
-        }
-
-        return(nullptr);
-    }
-
-    if (node.nodeName()=="DockingPaneTabbedContainer") {
-        QDomElement nodeElement = node.toElement();
-        QString containerId, selectedTab;
-        DockingPaneContainer *selectedContainer = nullptr;
-        int paneCount = 0;
-
-        DockingPaneTabbedContainer *tabbedContainer = new DockingPaneTabbedContainer();
-
-        tabbedContainer->setId(nodeElement.attribute("id"));
-
-        selectedTab = nodeElement.attribute("selectedTab");
-
-        tabbedContainer->m_dockingManager = this;
-
-        d->m_dockingPaneList.append(tabbedContainer);
-
-        QDomNodeList nodeList = nodeElement.elementsByTagName("pane");
-
-        for(int i=0;i<nodeList.count();i++) {
-            containerId = nodeList.at(i).toElement().attribute("id");
-
-            if (d->m_dockingPaneMap.contains(containerId)) {
-                DockingPaneContainer *container = qobject_cast<DockingPaneContainer *>(d->m_dockingPaneMap[containerId]);
-
-                if (container) {
-                    if (containerId==selectedTab) {
-                        selectedContainer = container;
-                    }
-
-                    tabbedContainer->addPane(container);
-                    container->setState(DockingPaneBase::Tabbed);
-
-                    paneCount++;
-                }
-            }
-        }
-
-        if (paneCount) {
-            d->m_dockingPaneMap[nodeElement.attribute("id")] = tabbedContainer;
-
-            if (selectedContainer) {
-                tabbedContainer->setVisiblePane(selectedContainer);
-            }
-
-            return(tabbedContainer);
-        }
-
-        delete tabbedContainer;
-
-        return(nullptr);
-    }
-
-    if (node.nodeName()=="DockingPaneSplitterContainer")
-    {
-        QDomElement nodeElement = node.toElement();
-        DockingPaneSplitterContainer *newSplitter;
-
-        DockingPaneBase *first = restoreLayout(nodeElement.childNodes().at(0));
-        DockingPaneBase *second = restoreLayout(nodeElement.childNodes().at(1));;
-
-        if (first && second) {
-            newSplitter = new DockingPaneSplitterContainer;
-
-            newSplitter->m_splitterWidget->addWidget(first);
-            newSplitter->m_splitterWidget->addWidget(second);
-
-            first->setVisible(true);
-            second->setVisible(true);
-
-            first->setState(DockingPaneBase::Docked);
-            second->setState(DockingPaneBase::Docked);
-
-            // *****
-            // this is not a bug!  First restore restores the splitter state, second restore restores
-            // the child state....weird, but necessary to ensure child windows end up correct size!
-            // *****
-
-            newSplitter->m_splitterWidget->restoreState(QByteArray::fromBase64(nodeElement.attribute("state").toLatin1()));
-            newSplitter->m_splitterWidget->restoreState(QByteArray::fromBase64(nodeElement.attribute("state").toLatin1()));
-
-            return(newSplitter);
-        } else {
-            if (first) {
-                return(first);
-            }
-
-            if (second) {
-                return(second);
-            }
-        }
-    }
-
-    return(nullptr);
-}
-
-void DockingPaneManager::saveFloatingState(QDomNode *parentNode)
-{
-    Q_D(DockingPaneManager);
-
-    foreach(DockingPaneBase *basePane, d->m_dockingPaneList) {
-        if (basePane->state()==DockingPaneBase::Floating) {
-            basePane->saveLayout(parentNode, true);
-        }
-    }
-}
-
-void DockingPaneManager::savePinnedState(QDomNode *parentNode, QBoxLayout *layout)
-{
-    QDomDocument doc = parentNode->ownerDocument();
-    QList<QString> savedIds;
-
-    for(int i=0;i<layout->count();i++) {
-        DockAutoHideButton *autoHideButton = qobject_cast<DockAutoHideButton *>(layout->itemAt(i)->widget());
-
-        if (autoHideButton) {
-            QDomDocument doc = parentNode->ownerDocument();
-
-            if (!savedIds.contains(autoHideButton->container()->id())) {
-                QDomElement domElement = doc.createElement("pane");
-
-                domElement.setAttribute("id", autoHideButton->container()->id());
-
-                parentNode->appendChild(domElement);
-
-                savedIds.append(autoHideButton->container()->id());
-            }
-        }
-    }
-}
-
-void DockingPaneManager::restorePinnedPanes(QDomNode *node)
-{
-    Q_D(DockingPaneManager);
-
-    QDomNodeList nodeList = node->childNodes();
-
-    for(int i=0;i<nodeList.count();i++) {
-        QDomElement domElement = nodeList.at(i).toElement();
-
-        if (domElement.nodeName()=="pane") {
-            QString paneId = domElement.attribute("id");
-
-            if (d->m_dockingPaneMap.contains(paneId)) {
-                hidePane(d->m_dockingPaneMap[paneId]);
-            }
-        }
-    }
-}
-
-void DockingPaneManager::restoreFloatingPanes(QDomNode *node)
-{
-    Q_D(DockingPaneManager);
-
-    QDomNodeList nodeList = node->childNodes();
-
-    for(int i=0;i<nodeList.count();i++) {
-        QDomElement domElement = nodeList.at(i).toElement();
-
-        QString paneId = domElement.attribute("id");
-
-        if (d->m_dockingPaneMap.contains(paneId)) {
-            DockingPaneContainer *container = qobject_cast<DockingPaneContainer *>(d->m_dockingPaneMap[paneId]);
-
-            if (container) {
-                container->restoreGeometry(QByteArray::fromBase64(domElement.attribute("geometry").toLatin1()));
-                container->floatPane(QPoint(0,0));
-            }
-        }
-    }
 }
 
 void DockingPaneManager::setMainWindow(QWidget *window)
