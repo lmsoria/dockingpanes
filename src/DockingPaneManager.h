@@ -81,9 +81,6 @@ class DOCKINGPANESSHARED_EXPORT DockingPaneManager : QObject
     protected:
         virtual bool eventFilter(QObject *obj, QEvent *event) override;
         DockingPaneManagerPrivate *const d_ptr;
-
-    private Q_SLOTS:
-        void onFocusChanged(QWidget *old, QWidget *now);
 };
 
 #endif // DOCKINGPANEMANAGER_H

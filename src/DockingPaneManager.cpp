@@ -520,9 +520,6 @@ DockingPaneManager::DockingPaneManager() :
 
     d->m_targetWidget = new DockingTargetWidget();
     d->m_dockingStickers = new DockingFrameStickers();
-
-    connect(qApp, SIGNAL(focusChanged(QWidget*,QWidget*)), this, SLOT(onFocusChanged(QWidget *, QWidget *)));
-
 }
 
 DockingPaneBase *DockingPaneManager::setClientWidget(QWidget *widget)
@@ -1255,8 +1252,6 @@ void DockingPaneManager::showPane(DockingPaneBase *dockingPane)
         }
     }
 }
-
-void DockingPaneManager::onFocusChanged(QWidget*, QWidget*) { }
 
 void DockingPaneManager::floatingPaneStartMove(DockingPaneBase*, QPoint)
 {
